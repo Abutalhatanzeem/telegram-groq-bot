@@ -3,7 +3,7 @@ export default {
 
     // ===== APNI KEYS YAHAN DAALO =====
     const BOT_TOKEN = "8704763332:AAG7B_POD4K2xEJMRWbwBR8nUL7mMeAtg24";
-    const GROQ_API_KEY = "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";
+    const GEMINI_API_KEY = "AIzaSyBmTLcn8S1Ebh2jhyz9-08dEGCzxkTa6vk";
     const SERPER_API_KEY = "4b660329f7abc5e8c92efa0347ff631a0238e908";
     // ==================================
 
@@ -19,8 +19,8 @@ export default {
     // /start command
     if (userText === "/start") {
       await sendMessage(BOT_TOKEN, chatId,
-        "Hello! 👋 Main tumhara AI Bot hoon!\n\n" +
-        "🤖 Normal sawaal → Direct AI jawab\n" +
+        "Hello! 👋 Main tumhara Gemini AI Bot hoon!\n\n" +
+        "🤖 Normal sawaal → Gemini AI jawab\n" +
         "🌐 /search [query] → Web search\n" +
         "📰 /news [topic] → Latest news\n" +
         "🖼️ /image [query] → Images dhundho\n\n" +
@@ -59,8 +59,8 @@ export default {
           `${i + 1}. ${r.title}\n${r.snippet}`
         ).join("\n\n");
 
-        const summary = await getGroqReply(
-          GROQ_API_KEY,
+        const summary = await getGeminiReply(
+          GEMINI_API_KEY,
           `Query: ${query}\n\nSearch Results:\n${searchContext}\n\nIn results ki short aur clear summary do.`
         );
 
@@ -103,8 +103,8 @@ export default {
           `${i + 1}. ${a.title}\n${a.snippet}`
         ).join("\n\n");
 
-        const summary = await getGroqReply(
-          GROQ_API_KEY,
+        const summary = await getGeminiReply(
+          GEMINI_API_KEY,
           `Topic: ${topic}\n\nNews:\n${newsContext}\n\nIn news ki short summary do.`
         );
 
@@ -158,9 +158,9 @@ export default {
       return new Response("OK");
     }
 
-    // Normal AI Chat
+    // Normal AI Chat — Gemini
     try {
-      const reply = await getGroqReply(GROQ_API_KEY, userText);
+      const reply = await getGeminiReply(GEMINI_API_KEY, userText);
       await sendMessage(BOT_TOKEN, chatId, reply);
     } catch (err) {
       await sendMessage(BOT_TOKEN, chatId, "❌ Error: " + err.message);
@@ -170,33 +170,33 @@ export default {
   }
 }
 
-// Groq AI Helper
-async function getGroqReply(apiKey, prompt) {
-  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      model: "llama-3.3-70b-versatile",
-      messages: [
-        {
-          role: "system",
-          content: "Tum ek helpful AI assistant ho. Clear, short aur accurate jawab do. Hinglish use kar sakte ho."
-        },
-        {
-          role: "user",
-          content: prompt
+// Gemini AI Helper
+async function getGeminiReply(apiKey, prompt) {
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                text: "Tum ek helpful AI assistant ho. Clear, short aur accurate jawab do. Hinglish use kar sakte ho.\n\n" + prompt
+              }
+            ]
+          }
+        ],
+        generationConfig: {
+          maxOutputTokens: 700
         }
-      ],
-      max_tokens: 700
-    })
-  });
+      })
+    }
+  );
 
   const data = await res.json();
-  if (res.status === 429) return "⏳ Busy hoon, 10 second baad try karo!";
-  return data.choices?.[0]?.message?.content || "⚠️ Jawab nahi mila!";
+  if (!res.ok) return "⚠️ Gemini Error: " + (data.error?.message || "Unknown error");
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || "⚠️ Jawab nahi mila!";
 }
 
 // Telegram Message Helper
