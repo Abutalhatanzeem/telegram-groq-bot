@@ -19,26 +19,46 @@ export default {
       return new Response("OK");
     }
 
-    const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${GROQ_API_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "llama3-70b-8192",
-        messages: [
-          { role: "system", content: "Tum helpful assistant ho. Short jawab do." },
-          { role: "user", content: userText }
-        ],
-        max_tokens: 500
-      })
-    });
+    try {
+      const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${GROQ_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "llama3-8b-8192",
+          messages: [
+            { role: "system", content: "Tum helpful assistant ho. Short jawab do." },
+            { role: "user", content: userText }
+          ],
+          max_tokens: 500
+        })
+      });
 
-    const groqData = await groqRes.json();
-    const reply = groqData.choices?.[0]?.message?.content || "⚠️ Error aaya!";
+      const groqData = await groqRes.json();
 
-    await sendMessage(BOT_TOKEN, chatId, reply);
+      // Rate limit check
+      if (groqRes.status === 429) {
+        await sendMessage(BOT_TOKEN, chatId, 
+          "⏳ Thoda busy hoon, 10 second baad dobara try karo!");
+        return new Response("OK");
+      }
+
+      const reply = groqData.choices?.[0]?.message?.content;
+
+      if (!reply) {
+        await sendMessage(BOT_TOKEN, chatId,
+          "⚠️ Kuch gadbad hui: " + JSON.stringify(groqData));
+        return new Response("OK");
+      }
+
+      await sendMessage(BOT_TOKEN, chatId, reply);
+
+    } catch (err) {
+      await sendMessage(BOT_TOKEN, chatId, "❌ Error: " + err.message);
+    }
+
     return new Response("OK");
   }
 }
