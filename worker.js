@@ -172,31 +172,49 @@ export default {
 
 // Gemini AI Helper
 async function getGeminiReply(apiKey, prompt) {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: "Tum ek helpful AI assistant ho. Clear, short aur accurate jawab do. Hinglish use kar sakte ho.\n\n" + prompt
-              }
-            ]
-          }
-        ],
-        generationConfig: {
-          maxOutputTokens: 700
-        }
-      })
-    }
-  );
+  
+  // Pehle Flash Lite try karo
+  const models = [
+    "gemini-2.5-flash-lite",
+    "gemini-2.0-flash",
+    "gemini-1.5-flash"
+  ];
 
-  const data = await res.json();
-  if (!res.ok) return "⚠️ Gemini Error: " + (data.error?.message || "Unknown error");
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || "⚠️ Jawab nahi mila!";
+  for (const model of models) {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: "Tum ek helpful AI assistant ho. Clear, short aur accurate jawab do. Hinglish use kar sakte ho.\n\n" + prompt
+                }
+              ]
+            }
+          ],
+          generationConfig: {
+            maxOutputTokens: 700
+          }
+        })
+      }
+    );
+
+    const data = await res.json();
+
+    // Agar limit exceed ho → Next model try karo
+    if (res.status === 429) continue;
+
+    if (!res.ok) continue;
+
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (reply) return reply;
+  }
+
+  return "⏳ Sab models busy hain, kal dobara try karo!";
 }
 
 // Telegram Message Helper
