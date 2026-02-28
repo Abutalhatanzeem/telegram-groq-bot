@@ -8,7 +8,7 @@ export default {
     // ==================================
 
     if (request.method !== "POST")
-      return new Response("✅ Bot Running!");
+      return new Response("✅ Super Bot Running!");
 
     const update = await request.json();
     if (!update.message?.text) return new Response("OK");
@@ -16,23 +16,43 @@ export default {
     const chatId = update.message.chat.id;
     const userText = update.message.text;
 
-    // /start command
+    // /start
     if (userText === "/start") {
       await sendMessage(BOT_TOKEN, chatId,
-        "Hello! 👋 Main tumhara Llama AI Bot hoon!\n\n" +
+        "Hello! 👋 Main tumhara Super AI Bot hoon!\n\n" +
         "🤖 Normal sawaal → AI jawab\n" +
         "🌐 /search [query] → Web search\n" +
         "📰 /news [topic] → Latest news\n" +
-        "🖼️ /image [query] → Images\n\n" +
+        "🖼️ /image [query] → Images links\n" +
+        "🎨 /imagine [prompt] → AI Image banao\n" +
+        "🌤️ /weather [city] → Mausam\n" +
+        "🔢 /calc [expression] → Calculator\n\n" +
         "Examples:\n" +
-        "/search Pakistan weather today\n" +
-        "/news cricket\n" +
-        "/image mountains"
+        "/imagine a cat on moon\n" +
+        "/search Pakistan news\n" +
+        "/weather Karachi"
       );
       return new Response("OK");
     }
 
-    // /search command
+    // /imagine — AI Image Generate
+    if (userText.startsWith("/imagine ")) {
+      const prompt = userText.replace("/imagine ", "").trim();
+      await sendMessage(BOT_TOKEN, chatId, "🎨 Image bana raha hoon: " + prompt + "\n⏳ Thoda wait karo...");
+
+      try {
+        const encodedPrompt = encodeURIComponent(prompt);
+        const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=512&height=512&nologo=true`;
+
+        await sendPhoto(BOT_TOKEN, chatId, imageUrl, "🎨 " + prompt);
+      } catch (err) {
+        await sendMessage(BOT_TOKEN, chatId, "❌ Image Error: " + err.message);
+      }
+
+      return new Response("OK");
+    }
+
+    // /search
     if (userText.startsWith("/search ")) {
       const query = userText.replace("/search ", "").trim();
       await sendMessage(BOT_TOKEN, chatId, "🔍 Search kar raha hoon: " + query);
@@ -61,7 +81,7 @@ export default {
 
         const summary = await getGroqReply(
           GROQ_API_KEY,
-          `Query: ${query}\n\nSearch Results:\n${searchContext}\n\nIn results ki short aur clear summary do.`
+          `Query: ${query}\n\nSearch Results:\n${searchContext}\n\nShort summary do.`
         );
 
         const sources = results.map(r => `• ${r.link}`).join("\n");
@@ -76,7 +96,7 @@ export default {
       return new Response("OK");
     }
 
-    // /news command
+    // /news
     if (userText.startsWith("/news ")) {
       const topic = userText.replace("/news ", "").trim();
       await sendMessage(BOT_TOKEN, chatId, "📰 News dhundh raha hoon: " + topic);
@@ -105,7 +125,7 @@ export default {
 
         const summary = await getGroqReply(
           GROQ_API_KEY,
-          `Topic: ${topic}\n\nNews:\n${newsContext}\n\nIn news ki short summary do.`
+          `Topic: ${topic}\n\nNews:\n${newsContext}\n\nShort summary do.`
         );
 
         const links = articles.map(a => `• ${a.title}\n  ${a.link}`).join("\n");
@@ -120,7 +140,7 @@ export default {
       return new Response("OK");
     }
 
-    // /image command
+    // /image — Image Search
     if (userText.startsWith("/image ")) {
       const query = userText.replace("/image ", "").trim();
       await sendMessage(BOT_TOKEN, chatId, "🖼️ Images dhundh raha hoon: " + query);
@@ -158,6 +178,40 @@ export default {
       return new Response("OK");
     }
 
+    // /weather
+    if (userText.startsWith("/weather ")) {
+      const city = userText.replace("/weather ", "").trim();
+      await sendMessage(BOT_TOKEN, chatId, "🌤️ Mausam check kar raha hoon: " + city);
+
+      try {
+        const weatherRes = await fetch(
+          `https://wttr.in/${encodeURIComponent(city)}?format=3`
+        );
+        const weatherText = await weatherRes.text();
+        await sendMessage(BOT_TOKEN, chatId, "🌤️ " + weatherText);
+      } catch (err) {
+        await sendMessage(BOT_TOKEN, chatId, "❌ Weather Error: " + err.message);
+      }
+
+      return new Response("OK");
+    }
+
+    // /calc
+    if (userText.startsWith("/calc ")) {
+      const expression = userText.replace("/calc ", "").trim();
+      try {
+        const result = await getGroqReply(
+          GROQ_API_KEY,
+          `Sirf yeh math calculate karo aur sirf answer do, koi explanation nahi: ${expression}`
+        );
+        await sendMessage(BOT_TOKEN, chatId, `🔢 ${expression} = ${result}`);
+      } catch (err) {
+        await sendMessage(BOT_TOKEN, chatId, "❌ Calc Error: " + err.message);
+      }
+
+      return new Response("OK");
+    }
+
     // Normal AI Chat
     try {
       const reply = await getGroqReply(GROQ_API_KEY, userText);
@@ -170,7 +224,7 @@ export default {
   }
 }
 
-// Groq Llama 3.3 70b Helper
+// Groq AI Helper
 async function getGroqReply(apiKey, prompt) {
   const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
@@ -183,7 +237,7 @@ async function getGroqReply(apiKey, prompt) {
       messages: [
         {
           role: "system",
-          content: "Tum ek helpful AI assistant ho. Clear, short aur accurate jawab do. Hinglish use kar sakte ho."
+          content: "Tum ek helpful AI assistant ho. Clear aur accurate jawab do. Hinglish use kar sakte ho."
         },
         {
           role: "user",
@@ -200,11 +254,24 @@ async function getGroqReply(apiKey, prompt) {
   return data.choices?.[0]?.message?.content || "⚠️ Jawab nahi mila!";
 }
 
-// Telegram Message Helper
+// Telegram Text Message
 async function sendMessage(token, chatId, text) {
   await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ chat_id: chatId, text: text })
+  });
+}
+
+// Telegram Photo Send
+async function sendPhoto(token, chatId, photoUrl, caption) {
+  await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: chatId,
+      photo: photoUrl,
+      caption: caption
+    })
   });
 }
