@@ -3,7 +3,7 @@ export default {
 
     // ===== APNI KEYS YAHAN DAALO =====
     const BOT_TOKEN = "8704763332:AAG7B_POD4K2xEJMRWbwBR8nUL7mMeAtg24";
-    const GEMINI_API_KEY = "AIzaSyBmTLcn8S1Ebh2jhyz9-08dEGCzxkTa6vk";
+    const OPENROUTER_API_KEY = "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";
     const SERPER_API_KEY = "4b660329f7abc5e8c92efa0347ff631a0238e908";
     // ==================================
 
@@ -19,11 +19,11 @@ export default {
     // /start command
     if (userText === "/start") {
       await sendMessage(BOT_TOKEN, chatId,
-        "Hello! 👋 Main tumhara Gemini AI Bot hoon!\n\n" +
-        "🤖 Normal sawaal → Gemini AI jawab\n" +
+        "Hello! 👋 Main tumhara Kimi K2 AI Bot hoon!\n\n" +
+        "🤖 Normal sawaal → Kimi K2 AI jawab\n" +
         "🌐 /search [query] → Web search\n" +
         "📰 /news [topic] → Latest news\n" +
-        "🖼️ /image [query] → Images dhundho\n\n" +
+        "🖼️ /image [query] → Images\n\n" +
         "Examples:\n" +
         "/search Pakistan weather today\n" +
         "/news cricket\n" +
@@ -59,8 +59,8 @@ export default {
           `${i + 1}. ${r.title}\n${r.snippet}`
         ).join("\n\n");
 
-        const summary = await getGeminiReply(
-          GEMINI_API_KEY,
+        const summary = await getKimiReply(
+          OPENROUTER_API_KEY,
           `Query: ${query}\n\nSearch Results:\n${searchContext}\n\nIn results ki short aur clear summary do.`
         );
 
@@ -103,8 +103,8 @@ export default {
           `${i + 1}. ${a.title}\n${a.snippet}`
         ).join("\n\n");
 
-        const summary = await getGeminiReply(
-          GEMINI_API_KEY,
+        const summary = await getKimiReply(
+          OPENROUTER_API_KEY,
           `Topic: ${topic}\n\nNews:\n${newsContext}\n\nIn news ki short summary do.`
         );
 
@@ -158,9 +158,9 @@ export default {
       return new Response("OK");
     }
 
-    // Normal AI Chat — Gemini
+    // Normal AI Chat — Kimi K2
     try {
-      const reply = await getGeminiReply(GEMINI_API_KEY, userText);
+      const reply = await getKimiReply(OPENROUTER_API_KEY, userText);
       await sendMessage(BOT_TOKEN, chatId, reply);
     } catch (err) {
       await sendMessage(BOT_TOKEN, chatId, "❌ Error: " + err.message);
@@ -170,51 +170,34 @@ export default {
   }
 }
 
-// Gemini AI Helper
-async function getGeminiReply(apiKey, prompt) {
-  
-  // Pehle Flash Lite try karo
-  const models = [
-    "gemini-2.5-flash-lite",
-    "gemini-2.0-flash",
-    "gemini-1.5-flash"
-  ];
+// Kimi K2 AI Helper — OpenRouter
+async function getKimiReply(apiKey, prompt) {
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: "moonshotai/kimi-k2:free",
+      messages: [
+        {
+          role: "system",
+          content: "Tum ek helpful AI assistant ho. Clear, short aur accurate jawab do. Hinglish use kar sakte ho."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      max_tokens: 700
+    })
+  });
 
-  for (const model of models) {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: "Tum ek helpful AI assistant ho. Clear, short aur accurate jawab do. Hinglish use kar sakte ho.\n\n" + prompt
-                }
-              ]
-            }
-          ],
-          generationConfig: {
-            maxOutputTokens: 700
-          }
-        })
-      }
-    );
-
-    const data = await res.json();
-
-    // Agar limit exceed ho → Next model try karo
-    if (res.status === 429) continue;
-
-    if (!res.ok) continue;
-
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (reply) return reply;
-  }
-
-  return "⏳ Sab models busy hain, kal dobara try karo!";
+  const data = await res.json();
+  if (res.status === 429) return "⏳ Busy hoon, thodi der baad try karo!";
+  if (!res.ok) return "⚠️ Error: " + (data.error?.message || "Unknown error");
+  return data.choices?.[0]?.message?.content || "⚠️ Jawab nahi mila!";
 }
 
 // Telegram Message Helper
