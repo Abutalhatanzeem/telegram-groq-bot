@@ -3,7 +3,7 @@ export default {
 
     // ===== APNI KEYS YAHAN DAALO =====
     const BOT_TOKEN = "8704763332:AAG7B_POD4K2xEJMRWbwBR8nUL7mMeAtg24";
-    const OPENROUTER_API_KEY = "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";
+    const GROQ_API_KEY = "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";
     const SERPER_API_KEY = "4b660329f7abc5e8c92efa0347ff631a0238e908";
     // ==================================
 
@@ -19,8 +19,8 @@ export default {
     // /start command
     if (userText === "/start") {
       await sendMessage(BOT_TOKEN, chatId,
-        "Hello! 👋 Main tumhara Kimi K2 AI Bot hoon!\n\n" +
-        "🤖 Normal sawaal → Kimi K2 AI jawab\n" +
+        "Hello! 👋 Main tumhara Llama AI Bot hoon!\n\n" +
+        "🤖 Normal sawaal → AI jawab\n" +
         "🌐 /search [query] → Web search\n" +
         "📰 /news [topic] → Latest news\n" +
         "🖼️ /image [query] → Images\n\n" +
@@ -59,8 +59,8 @@ export default {
           `${i + 1}. ${r.title}\n${r.snippet}`
         ).join("\n\n");
 
-        const summary = await getKimiReply(
-          OPENROUTER_API_KEY,
+        const summary = await getGroqReply(
+          GROQ_API_KEY,
           `Query: ${query}\n\nSearch Results:\n${searchContext}\n\nIn results ki short aur clear summary do.`
         );
 
@@ -103,8 +103,8 @@ export default {
           `${i + 1}. ${a.title}\n${a.snippet}`
         ).join("\n\n");
 
-        const summary = await getKimiReply(
-          OPENROUTER_API_KEY,
+        const summary = await getGroqReply(
+          GROQ_API_KEY,
           `Topic: ${topic}\n\nNews:\n${newsContext}\n\nIn news ki short summary do.`
         );
 
@@ -158,9 +158,9 @@ export default {
       return new Response("OK");
     }
 
-    // Normal AI Chat — Kimi K2
+    // Normal AI Chat
     try {
-      const reply = await getKimiReply(OPENROUTER_API_KEY, userText);
+      const reply = await getGroqReply(GROQ_API_KEY, userText);
       await sendMessage(BOT_TOKEN, chatId, reply);
     } catch (err) {
       await sendMessage(BOT_TOKEN, chatId, "❌ Error: " + err.message);
@@ -170,16 +170,16 @@ export default {
   }
 }
 
-// Kimi K2 AI Helper — OpenRouter
-async function getKimiReply(apiKey, prompt) {
-  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+// Groq Llama 3.3 70b Helper
+async function getGroqReply(apiKey, prompt) {
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      model: "moonshotai/kimi-k2:free",
+      model: "llama-3.3-70b-versatile",
       messages: [
         {
           role: "system",
@@ -195,8 +195,8 @@ async function getKimiReply(apiKey, prompt) {
   });
 
   const data = await res.json();
-  if (res.status === 429) return "⏳ Busy hoon, thodi der baad try karo!";
-  if (!res.ok) return "⚠️ Error: " + (data.error?.message || "Unknown error");
+  if (res.status === 429) return "⏳ Busy hoon, 10 second baad try karo!";
+  if (!res.ok) return "⚠️ Error: " + (data.error?.message || "Unknown");
   return data.choices?.[0]?.message?.content || "⚠️ Jawab nahi mila!";
 }
 
